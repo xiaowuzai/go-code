@@ -6,24 +6,24 @@ import (
 	"github.com/hashicorp/consul/api"
 )
 
-func NewRegistryClient(host string, port int) RegistryClient {
-	return &Registry{
-		Host: host,
-		Port: port,
-	}
-}
-
-func (r *Registry) Register(address string, port int, name string, tags []string, id string) error {
+func NewRegistry(host string, port int) (RegistryClient, error) {
 	cfg := api.DefaultConfig()
-	cfg.Address = fmt.Sprintf("%s:%d", r.Host, r.Port)
+	cfg.Address = fmt.Sprintf("%s:%d", host, port)
 
 	client, err := api.NewClient(cfg)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
+
+	return &Registry{client}, nil
+}
+
+//Register 注册服务
+func (r *Registry) Register(address string, port int, name string, tags []string, id string) error {
 	//生成对应的检查对象
 	check := &api.AgentServiceCheck{
-		HTTP:                           fmt.Sprintf("http://%s:%d/health", address, port),
+		GRPC: fmt.Sprintf("%s:%d", address, port),
+		// HTTP:                           fmt.Sprintf("http://%s:%d/health", address, port),
 		Timeout:                        "5s",
 		Interval:                       "5s",
 		DeregisterCriticalServiceAfter: "10s",
@@ -38,21 +38,26 @@ func (r *Registry) Register(address string, port int, name string, tags []string
 	registration.Address = address
 	registration.Check = check
 
-	err = client.Agent().ServiceRegister(registration)
+	err := r.Agent().ServiceRegister(registration)
 	if err != nil {
 		panic(err)
 	}
 	return nil
 }
 
+//DeRegister 取消注册
 func (r *Registry) DeRegister(serviceId string) error {
-	cfg := api.DefaultConfig()
-	cfg.Address = fmt.Sprintf("%s:%d", r.Host, r.Port)
+	return r.Agent().ServiceDeregister(serviceId)
+}
 
-	client, err := api.NewClient(cfg)
+// PrintServices 打印注册的服务
+func (r *Registry) PrintServices() error {
+	m, err := r.Agent().Services()
 	if err != nil {
 		return err
 	}
-	err = client.Agent().ServiceDeregister(serviceId)
-	return err
+	for k, v := range m {
+		fmt.Printf("key: %s, value: %v\n", k, v)
+	}
+	return nil
 }

@@ -5,9 +5,12 @@ import (
 )
 
 func main() {
-	reg := register.Registry{
-		Host: "127.0.0.1", // consul host
-		Port: 8500,        // consul http port
+	reg, err := register.NewRegistry("127.0.0.1", 8500)
+	if err != nil {
+		panic(err)
 	}
-	_ = reg.Register("192.168.204.82", 8003, "bond-server", []string{"service", "bond"}, "bond-server")
+	// _ = reg.Register("192.168.204.82", 8088, "bond-server", []string{"service", "bond"}, "bond-server")
+	_ = reg.Register("192.168.204.82", 8088, "grpc-server", []string{"service", "grpc"}, "grpc-server")
+
+	_ = reg.PrintServices()
 }
